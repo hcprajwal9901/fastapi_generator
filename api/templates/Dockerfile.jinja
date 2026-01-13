@@ -1,0 +1,52 @@
+# Generated Dockerfile for {{ cps.project_name }}
+# Environment: {{ cps.environment.type }}
+#
+# This Dockerfile is deterministically generated from CPS.
+# Modify CPS to change the configuration.
+
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Feature flags from CPS (deterministic)
+{% if cps.features.chat %}
+ENV FEATURE_CHAT=true
+{% else %}
+ENV FEATURE_CHAT=false
+{% endif %}
+{% if cps.features.rag %}
+ENV FEATURE_RAG=true
+{% else %}
+ENV FEATURE_RAG=false
+{% endif %}
+{% if cps.features.streaming %}
+ENV FEATURE_STREAMING=true
+{% else %}
+ENV FEATURE_STREAMING=false
+{% endif %}
+{% if cps.features.embeddings %}
+ENV FEATURE_EMBEDDINGS=true
+{% else %}
+ENV FEATURE_EMBEDDINGS=false
+{% endif %}
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
+
+# Run the application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

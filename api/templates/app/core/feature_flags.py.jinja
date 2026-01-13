@@ -1,0 +1,127 @@
+"""
+Feature Flags - Feature #8
+
+Generated from CPS - these flags MUST be checked before using corresponding features.
+Disabled features raise FeatureDisabledError.
+
+Rules:
+- Flags must reflect CPS
+- Flags must be used, not decorative
+- Disabled features must raise clear errors if called
+"""
+import os
+from functools import wraps
+from typing import Callable, Any
+
+# =============================================================================
+# Feature Flags (Generated from CPS - Deterministic)
+# =============================================================================
+
+# These values are set at generation time from CPS
+# They can be overridden via environment variables if needed
+FEATURE_CHAT = os.getenv("FEATURE_CHAT", "{{ 'true' if cps.features.chat else 'false' }}").lower() == "true"
+FEATURE_RAG = os.getenv("FEATURE_RAG", "{{ 'true' if cps.features.rag else 'false' }}").lower() == "true"
+FEATURE_STREAMING = os.getenv("FEATURE_STREAMING", "{{ 'true' if cps.features.streaming else 'false' }}").lower() == "true"
+FEATURE_EMBEDDINGS = os.getenv("FEATURE_EMBEDDINGS", "{{ 'true' if cps.features.embeddings else 'false' }}").lower() == "true"
+
+
+# =============================================================================
+# Feature Flag Enforcement
+# =============================================================================
+
+class FeatureDisabledError(Exception):
+    """
+    Raised when a disabled feature is accessed.
+    
+    This error provides clear guidance on how to enable the feature.
+    """
+    pass
+
+
+def require_feature(feature_name: str, enabled: bool) -> Callable:
+    """
+    Decorator to enforce feature flag checks.
+    
+    Usage:
+        @require_feature("chat", FEATURE_CHAT)
+        async def chat_endpoint(request):
+            ...
+    
+    Args:
+        feature_name: Human-readable feature name for error messages
+        enabled: Whether the feature is enabled
+        
+    Returns:
+        Decorated function that raises FeatureDisabledError if feature is disabled
+    """
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+            if not enabled:
+                raise FeatureDisabledError(
+                    f"Feature '{feature_name}' is disabled in project configuration. "
+                    f"To enable this feature:\n"
+                    f"1. Update your CPS to set features.{feature_name.lower()} = true\n"
+                    f"2. Regenerate the project\n"
+                    f"Or set the environment variable FEATURE_{feature_name.upper()}=true"
+                )
+            return await func(*args, **kwargs)
+        
+        @wraps(func)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+            if not enabled:
+                raise FeatureDisabledError(
+                    f"Feature '{feature_name}' is disabled in project configuration. "
+                    f"To enable this feature:\n"
+                    f"1. Update your CPS to set features.{feature_name.lower()} = true\n"
+                    f"2. Regenerate the project\n"
+                    f"Or set the environment variable FEATURE_{feature_name.upper()}=true"
+                )
+            return func(*args, **kwargs)
+        
+        # Return appropriate wrapper based on function type
+        import asyncio
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper
+        return sync_wrapper
+    
+    return decorator
+
+
+def check_feature(feature_name: str, enabled: bool) -> None:
+    """
+    Explicitly check if a feature is enabled.
+    
+    Use this for inline feature checks instead of the decorator.
+    
+    Args:
+        feature_name: Human-readable feature name
+        enabled: Whether the feature is enabled
+        
+    Raises:
+        FeatureDisabledError: If feature is not enabled
+    """
+    if not enabled:
+        raise FeatureDisabledError(
+            f"Feature '{feature_name}' is disabled. "
+            f"Enable features.{feature_name.lower()} in CPS to use this functionality."
+        )
+
+
+# =============================================================================
+# Feature Status Report
+# =============================================================================
+
+def get_feature_status() -> dict:
+    """
+    Get current status of all feature flags.
+    
+    Returns:
+        Dictionary with feature names and their enabled status
+    """
+    return {
+        "chat": FEATURE_CHAT,
+        "rag": FEATURE_RAG,
+        "streaming": FEATURE_STREAMING,
+        "embeddings": FEATURE_EMBEDDINGS,
+    }

@@ -1,0 +1,43 @@
+# Generated docker-compose.yml for {{ cps.project_name }}
+# Environment: {{ cps.environment.type }}
+#
+# This file is deterministically generated from CPS.
+# Modify CPS to change the configuration.
+
+version: "3.8"
+
+services:
+  {{ cps.project_name | lower | replace(" ", "_") }}:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - FEATURE_CHAT={{ 'true' if cps.features.chat else 'false' }}
+      - FEATURE_RAG={{ 'true' if cps.features.rag else 'false' }}
+      - FEATURE_STREAMING={{ 'true' if cps.features.streaming else 'false' }}
+      - FEATURE_EMBEDDINGS={{ 'true' if cps.features.embeddings else 'false' }}
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+{% if cps.features.rag and cps.vector_store %}
+{% if 'chroma' in cps.vector_store | lower %}
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+
+volumes:
+  chroma_data:
+{% endif %}
+{% endif %}

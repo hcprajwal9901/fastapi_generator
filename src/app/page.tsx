@@ -33,26 +33,48 @@ export default function Home() {
         }
     };
 
+    const [oldFiles, setOldFiles] = useState<Record<string, string> | null>(null);
+    const [diff, setDiff] = useState<any>(null);
+
     const handleGenerate = async () => {
         setLoading(true);
         setError(null);
+        setDiff(null);
         try {
-            const res = await fetch("/api/generate", {
+            // Determine if we should generate or regenerate
+            const endpoint = oldFiles ? "/api/regenerate" : "/api/generate";
+            const body = oldFiles ? { cps, old_files: oldFiles } : cps;
+
+            const res = await fetch(endpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(cps),
+                body: JSON.stringify(body),
             });
             const data = await res.json();
+
             if (data.detail) {
                 setError(JSON.stringify(data.detail));
                 return;
             }
-            setFiles(data.files);
+
+            // Handle output format
+            if (data.diff) {
+                setFiles(data.files);
+                setDiff(data.diff);
+            } else {
+                setFiles(data.files || data); // Handle both formats
+            }
         } catch (err: any) {
             setError(err.message);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleBack = () => {
+        setOldFiles(files);
+        setFiles({});
+        setDiff(null);
     };
 
     const handleRefine = async () => {
@@ -67,8 +89,12 @@ export default function Home() {
             });
             const data = await res.json();
             if (data.error) throw new Error(data.error);
+
+            // If refining, we treat the previous files as 'old' for potential diffing logic later
+            // But usually refine just updates in place. 
+            // We could optionally compute diff here too if we wanted.
             setFiles(data.files);
-            setFeedback(""); // Clear feedback after success
+            setFeedback("");
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -126,7 +152,7 @@ export default function Home() {
 
                     <section className="space-y-4">
                         <h2 className="text-2xl font-bold">2. Review Specification (CPS)</h2>
-                        <CPSPreview cps={cps} onGenerate={handleGenerate} loading={loading} />
+                        <CPSPreview cps={cps} setCps={setCps} onGenerate={handleGenerate} loading={loading} />
                     </section>
                 </div>
             ) : (
@@ -135,7 +161,7 @@ export default function Home() {
                         <h2 className="text-2xl font-bold">3. Generated Code</h2>
                         <div className="space-x-4">
                             <button
-                                onClick={() => setFiles({})}
+                                onClick={handleBack}
                                 className="px-4 py-2 border border-foreground/20 rounded hover:bg-foreground/10 transition"
                             >
                                 Back
@@ -148,7 +174,12 @@ export default function Home() {
                             </button>
                         </div>
                     </div>
-                    <CodePreview files={files} onUpdateFile={(path, content) => setFiles(prev => ({ ...prev, [path]: content }))} />
+                    <CodePreview
+                        files={files}
+                        oldFiles={oldFiles || undefined}
+                        diff={diff}
+                        onUpdateFile={(path, content) => setFiles(prev => ({ ...prev, [path]: content }))}
+                    />
 
                     <div className="p-4 bg-white/5 border border-white/10 rounded-lg space-y-4 shadow-xl backdrop-blur-md">
                         <div className="flex items-center gap-2 mb-2">

@@ -1,0 +1,59 @@
+Extract the information explicitly stated in the user input.
+If a value is not present, infer a reasonable default based on context (especially for project_name and description).
+For boolean features, default to false unless implied.
+Output strictly valid JSON matching the CPS schema.
+
+CPS Schema:
+{
+  "project_name": "string",
+  "description": "string",
+  "llm_provider": {
+    "type": "openai | azure_openai | local",
+    "api_base": "string | null",
+    "api_version": "string | null",
+    "deployment_name": "string | null"
+  },
+  "model": "string | null",
+  "embedding_model": "string | null",
+  "vector_store": "string | null",
+  "mode": "general | rag_only",
+  "features": {
+    "chat": boolean,
+    "rag": boolean,
+    "streaming": boolean,
+    "embeddings": boolean
+  },
+  "endpoints": [
+    {
+      "path": "string",
+      "method": "GET | POST",
+      "uses_llm": boolean,
+      "description": "string | null"
+    }
+  ],
+  "auth": {
+    "type": "none | api_key | jwt"
+  },
+  "modules": ["string"],
+  "environment": {
+    "type": "local | docker | production",
+    "generate_dockerfile": boolean,
+    "generate_compose": boolean
+  },
+  "generation_options": {
+    "openapi_first": boolean,
+    "generate_tests": boolean,
+    "failure_first": boolean
+  }
+}
+
+User Input:
+{text}
+
+Instructions:
+- Identify logical domains or modules based on requirements (e.g., "users", "billing", "analytics").
+- List them in the "modules" array.
+- Ensure project_name and description are professional.
+- For llm_provider, default to {"type": "openai"} unless specified otherwise.
+- For environment, default to {"type": "local", "generate_dockerfile": false, "generate_compose": false}.
+- For generation_options, default to {"openapi_first": false, "generate_tests": true, "failure_first": true}.
